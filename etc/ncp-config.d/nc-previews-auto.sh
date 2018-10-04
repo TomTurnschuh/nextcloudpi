@@ -21,13 +21,23 @@ configure()
     return 0
   }
   
-  # set crontab
-  local HOURS MINS
-    HOUR=$(( STARTTIME_ / 60   ))
-    HOUR=$(( $HOUR % 24  ))
-    MINS=$(( STARTTIME_ % 60   ))
+  local STARTHOUR STARTMIN TIMEZONEDIFF TIMEZONESIGN HOURZONEDIFF MINZONEDIFF
   
-  echo "${MINS}  ${HOUR}  *  *  *  php /var/www/nextcloud/occ preview:pre-generate" > /etc/cron.d/nc-previews-auto
+  TIMEZONEDIFF=$(date +"%z")
+  TIMEZONESIGN=$TIMEZONEDIFF | head -c 1
+  HOURZONEDIFF=$TIMEZONEDIFF | cut -c2-3
+  MINZONEDIFF=$TIMEZONEDIFF | cut -c4-5
+  
+  
+  # set crontab
+    STARTHOUR=$(( $STARTTIME_ / 60 $TIMEZONESIGN $HOURZONEDIFF ))
+    STARTHOUR=$(( $HOUR       % 24  ))
+    STARTMIN=$(( $STARTTIME_ % 60 $TIMEZONESIGN $MINZONEDIFF  ))
+    STOPHOUR=$((  $STARTHOUR  +  1  ))
+    STOPMINS=$((  $STARTMINS        ))
+  
+  echo "${STARTMINS}  ${STARTHOUR}  *  *  *  root  /usr/bin/sudo -u www-data /usr/bin/php /var/www/nextcloud/occ preview:pre-generate" >  /etc/cron.d/nc-previews-auto
+  echo "${STOPMINS}   ${STOPHOUR}   *  *  *  root  /usr/bin/pkill -f \"occ preview\""                                                  >> /etc/cron.d/nc-previews-auto
   service cron restart
 
   echo "Automatic preview generation enabled"
